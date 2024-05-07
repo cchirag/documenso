@@ -7,8 +7,6 @@ import { Undo2 } from 'lucide-react';
 import type { StrokeOptions } from 'perfect-freehand';
 import { getStroke } from 'perfect-freehand';
 
-import { unsafe_useEffectOnce } from '@documenso/lib/client-only/hooks/use-effect-once';
-
 import { cn } from '../../lib/utils';
 import { getSvgPathFromStroke } from './helper';
 import { Point } from './point';
@@ -19,6 +17,7 @@ export type SignaturePadProps = Omit<HTMLAttributes<HTMLCanvasElement>, 'onChang
   onChange?: (_signatureDataUrl: string | null) => void;
   containerClassName?: string;
   disabled?: boolean;
+  defaultValue?: string;
 };
 
 export const SignaturePad = ({
@@ -208,8 +207,9 @@ export const SignaturePad = ({
     }
   }, []);
 
-  unsafe_useEffectOnce(() => {
+  useEffect(() => {
     if ($el.current && typeof defaultValue === 'string') {
+      onClearClick();
       const ctx = $el.current.getContext('2d');
 
       const { width, height } = $el.current;
@@ -217,7 +217,7 @@ export const SignaturePad = ({
       const img = new Image();
 
       img.onload = () => {
-        ctx?.drawImage(img, 0, 0, Math.min(width, img.width), Math.min(height, img.height));
+        ctx?.drawImage(img, 0, 0);
 
         const defaultImageData = ctx?.getImageData(0, 0, width, height) || null;
 
@@ -226,7 +226,7 @@ export const SignaturePad = ({
 
       img.src = defaultValue;
     }
-  });
+  }, [defaultValue]);
 
   return (
     <div

@@ -1,7 +1,15 @@
+import { createServer } from 'http';
 import { Server } from 'socket.io';
 
+const nodeServer = createServer();
+
 const SOCKET_PORT = 4000;
-const io = new Server(SOCKET_PORT);
+const io = new Server(nodeServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
 
 io.on('connection', (socket) => {
   console.log('Connected to Socket ID: ', socket.id);
@@ -10,10 +18,10 @@ io.on('connection', (socket) => {
     await socket.join(roomID);
     if (io.sockets.adapter.rooms.has(roomID)) {
       console.log('Socket: ', socket.id, 'joined room: ', roomID);
-      socket.send('success');
+      socket.emit('create room response', 'success');
     } else {
       console.log('Failed to join room: ', roomID);
-      socket.send('failed');
+      socket.emit('create room response', 'failed');
     }
   });
 
@@ -23,15 +31,15 @@ io.on('connection', (socket) => {
       await socket.join(roomID);
       if (socket.rooms.has(roomID)) {
         console.log('Socket: ', socket.id, 'joined room: ', roomID);
-        socket.send('success');
+        socket.emit('join room response', 'success');
       } else {
         console.log('Failed to join room: ', roomID);
-        socket.send('failed');
+        socket.emit('join room response', 'failed');
         socket.disconnect();
       }
     } else {
       console.log('Room ', roomID, 'does not exist');
-      socket.send('failed');
+      socket.emit('join room response', 'failed');
       socket.disconnect();
     }
   });
@@ -45,3 +53,5 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+nodeServer.listen(SOCKET_PORT);

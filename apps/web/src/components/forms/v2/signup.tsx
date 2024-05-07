@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -17,6 +17,7 @@ import communityCardsImage from '@documenso/assets/images/community-cards.png';
 import { useAnalytics } from '@documenso/lib/client-only/hooks/use-analytics';
 import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { QRCode, generateUUID, socket } from '@documenso/sync-sign';
 import { TRPCClientError } from '@documenso/trpc/client';
 import { trpc } from '@documenso/trpc/react';
 import { ZPasswordSchema } from '@documenso/trpc/server/auth-router/schema';
@@ -87,9 +88,39 @@ export const SignUpFormV2 = ({
 
   const [step, setStep] = useState<SignUpStep>('BASIC_DETAILS');
 
+  const [roomCreated, setRoomCreated] = useState(false);
+  const [signatureValue, setSignatureValue] = useState(undefined);
+
   const utmSrc = searchParams?.get('utm_source') ?? null;
 
   const baseUrl = new URL(NEXT_PUBLIC_WEBAPP_URL() ?? 'http://localhost:3000');
+
+  const roomID = useRef(generateUUID());
+
+  useEffect(() => {
+    socket.on('create room response', (res) => {
+      setRoomCreated(res === 'success');
+    });
+
+    socket.on('signature', (res) => {
+      setSignatureValue(res);
+    });
+
+    socket.connect().emit(
+      'create room',
+      JSON.stringify({
+        roomID: roomID.current,
+      }),
+    );
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const roomURL = useMemo(() => {
+    return `${NEXT_PUBLIC_WEBAPP_URL()}/sign-sync/${roomID}`;
+  }, [roomID]);
 
   const form = useForm<TSignUpFormV2Schema>({
     values: {
@@ -177,6 +208,16 @@ export const SignUpFormV2 = ({
         variant: 'destructive',
       });
     }
+  };
+
+  const handleOnSignature = (signature: string) => {
+    socket.emit(
+      'sign',
+      JSON.stringify({
+        signature: signature,
+        roomID: roomID.current,
+      }),
+    );
   };
 
   return (
@@ -314,7 +355,11 @@ export const SignUpFormV2 = ({
                           className="h-36 w-full"
                           disabled={isSubmitting}
                           containerClassName="mt-2 rounded-lg border bg-background"
-                          onChange={(v) => onChange(v ?? '')}
+                          onChange={(v) => {
+                            handleOnSignature(v);
+                            onChange(v ?? '');
+                          }}
+                          defaultValue={signatureValue}
                         />
                       </FormControl>
 
@@ -322,6 +367,8 @@ export const SignUpFormV2 = ({
                     </FormItem>
                   )}
                 />
+
+                <QRCode value={roomURL} blur={true} height="100px" width="100px" />
 
                 {isGoogleSSOEnabled && (
                   <>
