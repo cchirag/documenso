@@ -1,0 +1,18 @@
+{
+  "name": "@documenso/sync-sign",
+  "version": "1.0.0",
+  "description": "A Socket IO client for syncing signature across clients",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rimraf node_modules"
+  },
+  "keywords": [],
+  "author": "Chirag Chandrashekhar",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io-client": "^4.7.5"
+  }
+}
